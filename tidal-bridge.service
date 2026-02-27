@@ -1,0 +1,13 @@
+[Unit]
+Description=Tidal Connect Metadata Bridge
+After=tidal-connect.service
+Requires=tidal-connect.service
+
+[Service]
+Type=simple
+ExecStart=/opt/tidal-connect/tidal-bridge.sh
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

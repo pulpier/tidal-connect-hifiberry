@@ -1,0 +1,13 @@
+[Unit]
+Description=Tidal Connect Watchdog
+After=tidal-connect.service
+Requires=tidal-connect.service
+
+[Service]
+Type=simple
+ExecStart=/opt/tidal-connect/tidal-watchdog.sh
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

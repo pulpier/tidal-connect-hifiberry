@@ -1,0 +1,29 @@
+## NOTE: This file is a template. The install script generates the actual
+## docker-compose.yml in /opt/tidal-connect with correct paths for the
+## system's audio user (UID, home directory).
+##
+## If editing manually, replace the placeholders:
+##   AUDIO_UID  — UID of the user running PipeWire (e.g. 1000)
+##   AUDIO_HOME — home directory of that user (e.g. /home/pi)
+
+services:
+  tidal-connect:
+    container_name: tidal_connect
+    build:
+      context: .
+      dockerfile: Docker/Dockerfile
+    image: hifiberry-tidal-connect:latest
+    tty: true
+    network_mode: host
+    devices:
+      - /dev/snd
+    volumes:
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - /var/run/dbus:/var/run/dbus
+      - /run/user/AUDIO_UID/pulse/native:/run/user/AUDIO_UID/pulse/native
+      - AUDIO_HOME/.config/pulse/cookie:/root/.config/pulse/cookie:ro
+    environment:
+      - PULSE_SERVER=unix:/run/user/AUDIO_UID/pulse/native
+      - PULSE_COOKIE=/root/.config/pulse/cookie
+    env_file: .env
+    restart: "no"

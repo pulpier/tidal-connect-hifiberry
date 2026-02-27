@@ -1,0 +1,19 @@
+[Unit]
+Description=Tidal Connect
+After=docker.service avahi-daemon.service
+Requires=docker.service
+Wants=avahi-daemon.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/tidal-connect
+ExecStartPre=/usr/bin/docker compose down --remove-orphans
+ExecStart=/usr/bin/docker compose up --no-build
+ExecStop=/usr/bin/docker compose down
+TimeoutStartSec=45
+TimeoutStopSec=15
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
