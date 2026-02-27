@@ -162,6 +162,38 @@ else
     echo "  Metadata bridge requires hifiberry-audiocontrol >= 0.6.17"
 fi
 
+# Register in Web UI player registry
+HBOS_PLAYERS_D="/etc/hifiberry/players.d"
+mkdir -p "$HBOS_PLAYERS_D/icons"
+
+cat > "$HBOS_PLAYERS_D/tidal.json" <<'PLAYERUIEOF'
+{
+    "name": "Tidal",
+    "provided_by": "tidal-connect",
+    "systemd_service": "tidal-connect",
+    "icon": "tidal",
+    "allow_change": true
+}
+PLAYERUIEOF
+
+if [ -f "$SCRIPT_DIR/icons/tidal.svg" ]; then
+    cp "$SCRIPT_DIR/icons/tidal.svg" "$HBOS_PLAYERS_D/icons/tidal.svg"
+    echo "  Installed tidal icon"
+fi
+
+echo "  Registered tidal in Web UI player registry"
+
+# Register systemd permissions via configserver drop-in
+mkdir -p /etc/configserver/conf.d
+cat > /etc/configserver/conf.d/tidal-connect.json <<'CONFEOF'
+{
+    "systemd": {
+        "tidal-connect": "all"
+    }
+}
+CONFEOF
+echo "  Registered tidal-connect systemd permissions"
+
 # --- Step 5: Build Docker image ---
 
 echo "[5/6] Building Docker image (this may take a few minutes)..."
