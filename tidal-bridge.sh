@@ -1,45 +1,19 @@
 #!/bin/bash
 
 # Tidal Connect Bridge for HiFiBerry OS NG
-# Monitors speaker_controller_application via tmux, syncs volume,
+# Monitors speaker_controller_application via tmux,
 # exports metadata to /tmp/tidal-status.json and POSTs events to ACR
+#
+# Volume is NOT managed here — it is controlled by ACR/configurator.
 
 ACR_URL="http://localhost:1080/api/player/tidal/update"
-CONFIGURATOR_URL="http://localhost:1081/api/v1/soundcard/detect"
 STATUS_FILE="/tmp/tidal-status.json"
-PREV_VOLUME=-1
 PREV_STATE=""
 PREV_TITLE=""
 PREV_ARTIST=""
 PREV_POSITION=-1
 
 echo "Starting Tidal Connect bridge..."
-
-# Query configurator for ALSA card index and volume control name
-detect_soundcard() {
-    local response
-    response=$(curl -s "$CONFIGURATOR_URL" 2>/dev/null)
-    if [ -z "$response" ]; then
-        echo "WARNING: configurator not reachable, using defaults (card 0, Digital)"
-        ALSA_CARD=0
-        VOLUME_CONTROL="Digital"
-        return
-    fi
-    ALSA_CARD=$(echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('hardware_index',0))" 2>/dev/null)
-    VOLUME_CONTROL=$(echo "$response" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('data',{}).get('volume_control','Digital'))" 2>/dev/null)
-    [ -z "$ALSA_CARD" ] && ALSA_CARD=0
-    [ -z "$VOLUME_CONTROL" ] && VOLUME_CONTROL="Digital"
-}
-
-detect_soundcard
-echo "ALSA card index: $ALSA_CARD"
-echo "Volume control: $VOLUME_CONTROL"
-
-# Get mixer range from ALSA
-ALSA_MAX=$(docker exec tidal_connect amixer -c "$ALSA_CARD" get "$VOLUME_CONTROL" 2>/dev/null \
-    | grep -o 'Limits:.*Playback [0-9]* - [0-9]*' | grep -o '[0-9]*$')
-[ -z "$ALSA_MAX" ] && ALSA_MAX=207
-echo "ALSA max value: $ALSA_MAX"
 echo "ACR endpoint: $ACR_URL"
 echo "Status file: $STATUS_FILE"
 
@@ -78,8 +52,11 @@ if ! wait_for_container; then
 fi
 
 CONSECUTIVE_ERRORS=0
+LOOP_COUNT=0
+RESYNC_INTERVAL=60  # Re-send full state every 60 iterations (~30s) to survive ACR restarts
 
 while true; do
+    LOOP_COUNT=$((LOOP_COUNT + 1))
     if ! is_container_ready; then
         CONSECUTIVE_ERRORS=$((CONSECUTIVE_ERRORS + 1))
         if [ $CONSECUTIVE_ERRORS -ge 5 ]; then
@@ -125,9 +102,6 @@ while true; do
     POSITION=$(echo "$POSITION_LINE" | cut -d'/' -f1)
     [ -z "$POSITION" ] && POSITION=0
 
-    # Parse volume from volume bar (count # symbols)
-    VOLUME=$(echo "$TMUX_OUTPUT" | grep 'l.*#.*k$' | tr -cd '#' | wc -c)
-
     # Duration: ms -> seconds
     if [ -n "$DURATION" ] && [ "$DURATION" -gt 0 ] 2>/dev/null; then
         DURATION_SEC=$((DURATION / 1000))
@@ -135,8 +109,14 @@ while true; do
         DURATION_SEC=0
     fi
 
+    # Periodic full re-sync (handles ACR restarts)
+    FORCE_RESYNC=false
+    if [ $((LOOP_COUNT % RESYNC_INTERVAL)) -eq 0 ]; then
+        FORCE_RESYNC=true
+    fi
+
     # Notify ACR of state changes
-    if [ "$STATE" != "$PREV_STATE" ]; then
+    if [ "$STATE" != "$PREV_STATE" ] || [ "$FORCE_RESYNC" = true ]; then
         case "$STATE" in
             PLAYING) ACR_STATE="playing" ;;
             PAUSED)  ACR_STATE="paused" ;;
@@ -148,7 +128,7 @@ while true; do
     fi
 
     # Notify ACR of track changes
-    if [ "$TITLE" != "$PREV_TITLE" ] || [ "$ARTIST" != "$PREV_ARTIST" ]; then
+    if [ "$TITLE" != "$PREV_TITLE" ] || [ "$ARTIST" != "$PREV_ARTIST" ] || [ "$FORCE_RESYNC" = true ]; then
         if [ -n "$TITLE" ]; then
             # Escape for JSON
             TITLE_J=$(echo "$TITLE" | sed 's/\\/\\\\/g; s/"/\\"/g')
@@ -170,16 +150,6 @@ while true; do
         fi
     fi
 
-    # Update hardware volume if changed
-    if [ "$VOLUME" != "$PREV_VOLUME" ] && [ -n "$VOLUME" ] && [ "$VOLUME" -ge 0 ] 2>/dev/null; then
-        ALSA_VALUE=$((VOLUME * ALSA_MAX / 38))
-        [ "$ALSA_VALUE" -gt "$ALSA_MAX" ] && ALSA_VALUE=$ALSA_MAX
-        PCT=$((VOLUME * 100 / 38))
-        echo "[$(date '+%H:%M:%S')] Volume: $VOLUME/38 (${PCT}%) -> ALSA ${VOLUME_CONTROL} $ALSA_VALUE/$ALSA_MAX (card $ALSA_CARD)"
-        docker exec tidal_connect amixer -c "$ALSA_CARD" set "$VOLUME_CONTROL" "$ALSA_VALUE" > /dev/null 2>&1
-        PREV_VOLUME=$VOLUME
-    fi
-
     # Write status JSON (atomic)
     TIMESTAMP=$(date +%s)
     ARTIST_JSON=$(echo "$ARTIST" | sed 's/"/\\"/g')
@@ -193,7 +163,6 @@ while true; do
   "album": "$ALBUM_JSON",
   "duration": $DURATION_SEC,
   "position": $POSITION,
-  "volume": $VOLUME,
   "timestamp": $TIMESTAMP
 }
 EOF

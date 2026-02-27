@@ -41,6 +41,7 @@ be aware of the risk. Do not expose the device directly to the internet.
 - HiFiBerry DAC (any model)
 - Raspberry Pi 3/4/5 or CM4/CM5
 - PipeWire with pipewire-pulse running (default on HiFiBerry OS NG)
+- hifiberry-audiocontrol >= 0.6.18 (for metadata integration via `players.d/` with custom capabilities)
 - Internet connection (for Docker image build and Tidal streaming)
 
 ## Configuration

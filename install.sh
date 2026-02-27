@@ -142,6 +142,26 @@ chmod +x "$INSTALL_DIR/entrypoint.sh"
 chmod +x "$INSTALL_DIR/tidal-bridge.sh"
 chmod +x "$INSTALL_DIR/tidal-watchdog.sh"
 
+# Register tidal as a player in AudioControl (ACR) via players.d/
+ACR_PLAYERS_D="/etc/audiocontrol/players.d"
+if [ -d "/etc/audiocontrol" ]; then
+    mkdir -p "$ACR_PLAYERS_D"
+    cat > "$ACR_PLAYERS_D/tidal.json" <<'PLAYEREOF'
+{
+    "generic": {
+        "name": "tidal",
+        "enable": true,
+        "supports_api_events": true,
+        "capabilities": ["killable"]
+    }
+}
+PLAYEREOF
+    echo "  Registered tidal player in $ACR_PLAYERS_D/tidal.json"
+else
+    echo "  WARNING: /etc/audiocontrol not found, skipping ACR player registration"
+    echo "  Metadata bridge requires hifiberry-audiocontrol >= 0.6.17"
+fi
+
 # --- Step 5: Build Docker image ---
 
 echo "[5/6] Building Docker image (this may take a few minutes)..."
