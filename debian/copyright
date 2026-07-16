@@ -1,0 +1,16 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: tidal-connect-hifiberry
+Source: https://github.com/pulpier/tidal-connect-hifiberry
+
+Files: *
+Copyright: 2024 Pulpier and contributors
+License: Expat
+ The Docker packaging, install scripts, systemd units and documentation are
+ provided as-is under the MIT/Expat license.
+
+Files: Docker/src/bin/* Docker/src/id_certificate/*
+Copyright: TIDAL
+License: proprietary
+ The Tidal Connect binaries and certificate are proprietary property of TIDAL
+ and are redistributed here as provided by the upstream project. They are not
+ covered by the Expat license above.

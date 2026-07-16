@@ -1,0 +1,26 @@
+Source: hifiberry-tidal-connect
+Section: hifiberry-extensions
+Priority: optional
+Maintainer: Pulpier <138523980+pulpier@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/pulpier/tidal-connect-hifiberry
+
+Package: hifiberry-tidal-connect
+Architecture: arm64
+Depends: ${misc:Depends},
+         docker.io | docker-ce,
+         docker-compose | docker-compose-plugin | docker-compose-v2
+Recommends: hifiberry-audiocontrol (>= 0.6.18)
+Description: Tidal Connect endpoint for HiFiBerry
+ Turn a HiFiBerry into a Tidal Connect receiver: stream from the Tidal app on
+ your phone directly to the attached HiFiBerry DAC.
+ .
+ The Tidal Connect binaries are proprietary 32-bit ARM executables that need
+ legacy Debian Stretch libraries, so they run inside a Docker container built
+ on the device at install time. Audio is routed to the host's PipeWire via the
+ PulseAudio protocol.
+XB-Hifiberry-Extension: yes
+XB-Extension-Name: Tidal Connect
+XB-Extension-Category: player
+XB-Extension-Needs-Reboot: maybe

@@ -1,8 +1,12 @@
 [Unit]
 Description=Tidal Connect
-After=docker.service avahi-daemon.service
-Requires=docker.service
+After=docker.service avahi-daemon.service tidal-connect-build.service
+Requires=docker.service tidal-connect-build.service
 Wants=avahi-daemon.service
+# Only start once the container image has actually been built. Starting before
+# then is a skipped (not failed) start, so the Web UI can enable this service
+# immediately after install and it simply waits for the build to finish.
+ConditionPathExists=/opt/tidal-connect/.build-stamp
 
 [Service]
 Type=simple

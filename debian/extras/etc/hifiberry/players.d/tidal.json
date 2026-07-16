@@ -1,0 +1,7 @@
+{
+    "name": "Tidal",
+    "provided_by": "tidal-connect",
+    "systemd_service": "tidal-connect",
+    "icon": "tidal",
+    "allow_change": true
+}

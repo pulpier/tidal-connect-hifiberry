@@ -1,0 +1,106 @@
+#!/bin/sh
+set -e
+
+INSTALL_DIR=/opt/tidal-connect
+
+case "$1" in
+  configure)
+    # Shipped scripts must be executable.
+    for s in entrypoint.sh tidal-bridge.sh tidal-watchdog.sh volume-bridge.sh \
+             wait-for-avahi.sh wait-for-container.sh wait-for-mdns-clear.sh; do
+      [ -f "$INSTALL_DIR/$s" ] && chmod 0755 "$INSTALL_DIR/$s" || true
+    done
+
+    # --- Resolve the audio user that runs PipeWire ---
+    if [ -f /etc/hifiberry.user ]; then
+      AUDIO_USER=$(cat /etc/hifiberry.user)
+    else
+      AUDIO_USER=$(logname 2>/dev/null || echo "")
+    fi
+    if [ -n "$AUDIO_USER" ] && id "$AUDIO_USER" >/dev/null 2>&1; then
+      AUDIO_UID=$(id -u "$AUDIO_USER")
+      AUDIO_HOME=$(getent passwd "$AUDIO_USER" | cut -d: -f6)
+    else
+      echo "hifiberry-tidal-connect: WARNING: cannot determine audio user; defaulting to uid 1000" >&2
+      AUDIO_UID=1000
+      AUDIO_HOME=/home/pi
+    fi
+    PULSE_SOCKET="/run/user/${AUDIO_UID}/pulse/native"
+    PULSE_COOKIE="${AUDIO_HOME}/.config/pulse/cookie"
+
+    # --- Generate .env, preserving an existing one so user edits survive ---
+    if [ ! -f "$INSTALL_DIR/.env" ]; then
+      DEVICE_NAME=$(hostname -s 2>/dev/null | sed 's/[^a-zA-Z0-9 _-]//g')
+      [ -z "$DEVICE_NAME" ] && DEVICE_NAME="HiFiBerry"
+      cat > "$INSTALL_DIR/.env" <<EOF
+FRIENDLY_NAME=${DEVICE_NAME}
+MODEL_NAME=HiFiBerry
+MQA_PASSTHROUGH=false
+MQA_CODEC=false
+PLAYBACK_DEVICE=default
+EOF
+    fi
+
+    # --- Generate docker-compose.yml with this system's PulseAudio paths ---
+    cat > "$INSTALL_DIR/docker-compose.yml" <<EOF
+services:
+  tidal-connect:
+    container_name: tidal_connect
+    build:
+      context: .
+      dockerfile: Docker/Dockerfile
+    image: hifiberry-tidal-connect:latest
+    tty: true
+    network_mode: host
+    devices:
+      - /dev/snd
+    volumes:
+      - ./entrypoint.sh:/entrypoint.sh:ro
+      - /var/run/dbus:/var/run/dbus
+      - ${PULSE_SOCKET}:${PULSE_SOCKET}
+      - ${PULSE_COOKIE}:/root/.config/pulse/cookie:ro
+    environment:
+      - PULSE_SERVER=unix:${PULSE_SOCKET}
+      - PULSE_COOKIE=/root/.config/pulse/cookie
+    env_file: .env
+    restart: "no"
+EOF
+
+    # --- Pi 5 / CM5 need a 4K-page kernel for the ARM32 container ---
+    PAGE_SIZE=$(getconf PAGESIZE 2>/dev/null || echo 4096)
+    CONFIG_TXT=/boot/firmware/config.txt
+    if [ "$PAGE_SIZE" -gt 4096 ] 2>/dev/null; then
+      if [ -f "$CONFIG_TXT" ] && ! grep -q '^kernel=kernel8.img' "$CONFIG_TXT"; then
+        {
+          echo ""
+          echo "# 4K page kernel for ARM32 Docker compatibility (tidal-connect)"
+          echo "kernel=kernel8.img"
+        } >> "$CONFIG_TXT"
+        touch /run/reboot-required 2>/dev/null || true
+        echo "hifiberry-tidal-connect: switched to the 4K-page kernel; a reboot is required." >&2
+      fi
+    fi
+
+    # --- Force a rebuild of the image on upgrade ---
+    rm -f "$INSTALL_DIR/.build-stamp"
+
+    # --- Enable the units and kick off the on-device image build ---
+    if [ -d /run/systemd/system ]; then
+      systemctl daemon-reload || true
+      systemctl enable tidal-connect-build.service tidal-connect.service \
+                       tidal-bridge.service tidal-watchdog.service >/dev/null 2>&1 || true
+      # The build oneshot starts the runtime units when it finishes. Defer it if
+      # a reboot is pending (page-size change), otherwise it would build against
+      # the wrong kernel.
+      if [ ! -e /run/reboot-required ]; then
+        systemctl start tidal-connect-build.service || true
+      else
+        echo "hifiberry-tidal-connect: reboot pending; the container image will build after reboot." >&2
+      fi
+    fi
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

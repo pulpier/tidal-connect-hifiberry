@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+# The four units are orchestrated entirely in the maintainer scripts: the build
+# oneshot must run first and the runtime units are gated on a build stamp, so
+# dh_installsystemd's default enable/start behaviour does not fit. Disable it and
+# manage systemd in postinst/prerm/postrm.
+override_dh_installsystemd:
+
+# Everything under /opt/tidal-connect is container payload — the ARM32 Tidal
+# binaries and pa_devs helpers run *inside* the Docker container, not on the
+# host. They must not be treated as host executables, so skip the ELF-processing
+# helpers (this package ships no host binaries; deps are declared by hand).
+override_dh_shlibdeps:
+
+override_dh_strip:
+
+override_dh_dwz:
+

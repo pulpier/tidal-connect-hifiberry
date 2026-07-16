@@ -1,0 +1,8 @@
+{
+    "generic": {
+        "name": "tidal",
+        "enable": true,
+        "supports_api_events": true,
+        "capabilities": ["killable"]
+    }
+}

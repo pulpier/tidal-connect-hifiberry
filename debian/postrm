@@ -1,0 +1,25 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+  remove|purge)
+    if [ -d /run/systemd/system ]; then
+      systemctl disable tidal-watchdog.service tidal-bridge.service \
+                        tidal-connect.service tidal-connect-build.service \
+                        >/dev/null 2>&1 || true
+      systemctl daemon-reload || true
+    fi
+    ;;
+esac
+
+if [ "$1" = "purge" ]; then
+  # Remove the built image and the files generated at install time.
+  docker rmi hifiberry-tidal-connect:latest >/dev/null 2>&1 || true
+  rm -f /opt/tidal-connect/.env /opt/tidal-connect/docker-compose.yml \
+        /opt/tidal-connect/.build-stamp
+  rmdir --ignore-fail-on-non-empty /opt/tidal-connect 2>/dev/null || true
+fi
+
+#DEBHELPER#
+
+exit 0
