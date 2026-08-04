@@ -45,7 +45,7 @@ echo ""
 if ! command -v docker &>/dev/null; then
     echo "[1/6] Installing Docker..."
     apt-get update -qq
-    apt-get install -y -qq docker.io docker-compose-v2
+    apt-get install -y -qq docker.io docker-compose-plugin
     systemctl enable docker
     systemctl start docker
     usermod -aG docker "$AUDIO_USER"
@@ -198,16 +198,19 @@ echo "  Registered tidal-connect systemd permissions"
 
 echo "[5/6] Building Docker image (this may take a few minutes)..."
 cd "$INSTALL_DIR"
-docker compose build --no-cache
+docker build --no-cache -t hifiberry-tidal-connect:latest -f Docker/Dockerfile .
+touch "$INSTALL_DIR/.build-stamp"
 
 # --- Step 6: Install systemd services ---
 
 echo "[6/6] Installing systemd services..."
+cp "$SCRIPT_DIR/tidal-connect-build.service" /etc/systemd/system/
 cp "$SCRIPT_DIR/tidal-connect.service" /etc/systemd/system/
 cp "$SCRIPT_DIR/tidal-bridge.service" /etc/systemd/system/
 cp "$SCRIPT_DIR/tidal-watchdog.service" /etc/systemd/system/
 
 systemctl daemon-reload
+systemctl enable tidal-connect-build.service
 systemctl enable tidal-connect.service
 systemctl enable tidal-bridge.service
 

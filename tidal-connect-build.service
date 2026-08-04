@@ -14,7 +14,7 @@ WorkingDirectory=/opt/tidal-connect
 # The build pulls the raspbian/stretch base and legacy libs from the network
 # (~2 min). A failure here is retryable with `systemctl restart
 # tidal-connect-build` and never corrupts package state.
-ExecStart=/usr/bin/docker compose build
+ExecStart=/usr/bin/docker build -t hifiberry-tidal-connect:latest -f Docker/Dockerfile .
 ExecStartPost=/usr/bin/touch /opt/tidal-connect/.build-stamp
 # Once the image exists, bring up the endpoint, metadata bridge, and watchdog.
 # --no-block is required: tidal-connect.service has Requires=/After= this unit,
