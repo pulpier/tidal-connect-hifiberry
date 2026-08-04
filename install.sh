@@ -87,6 +87,22 @@ else
     fi
 fi
 
+# docker-compose bind-mounts $PULSE_COOKIE read-only. If that path doesn't
+# exist yet, Docker silently creates it as a directory instead of a file,
+# which makes the container spam "Is a directory" errors on every read.
+# PipeWire's pipewire-pulse doesn't create this file on its own, so we must.
+if [ -d "$PULSE_COOKIE" ]; then
+    echo "  Removing bad PulseAudio cookie directory: $PULSE_COOKIE"
+    rmdir "$PULSE_COOKIE"
+fi
+if [ ! -f "$PULSE_COOKIE" ]; then
+    echo "  Creating PulseAudio cookie file: $PULSE_COOKIE"
+    mkdir -p "$(dirname "$PULSE_COOKIE")"
+    chown "$AUDIO_USER":"$AUDIO_USER" "$(dirname "$PULSE_COOKIE")"
+    touch "$PULSE_COOKIE"
+    chown "$AUDIO_USER":"$AUDIO_USER" "$PULSE_COOKIE"
+fi
+
 # --- Step 4: Install files ---
 
 echo "[4/6] Installing files to $INSTALL_DIR..."

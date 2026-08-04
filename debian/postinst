@@ -28,6 +28,21 @@ case "$1" in
     PULSE_SOCKET="/run/user/${AUDIO_UID}/pulse/native"
     PULSE_COOKIE="${AUDIO_HOME}/.config/pulse/cookie"
 
+    # docker-compose bind-mounts $PULSE_COOKIE read-only. If that path doesn't
+    # exist yet, Docker silently creates it as a directory instead of a file,
+    # which makes the container spam "Is a directory" errors on every read.
+    # PipeWire's pipewire-pulse doesn't create this file on its own, so we must.
+    if [ -d "$PULSE_COOKIE" ]; then
+      echo "hifiberry-tidal-connect: removing bad PulseAudio cookie directory: $PULSE_COOKIE" >&2
+      rmdir "$PULSE_COOKIE" 2>/dev/null || true
+    fi
+    if [ ! -f "$PULSE_COOKIE" ]; then
+      mkdir -p "$(dirname "$PULSE_COOKIE")"
+      chown "$AUDIO_USER":"$AUDIO_USER" "$(dirname "$PULSE_COOKIE")"
+      touch "$PULSE_COOKIE"
+      chown "$AUDIO_USER":"$AUDIO_USER" "$PULSE_COOKIE"
+    fi
+
     # --- Generate .env, preserving an existing one so user edits survive ---
     if [ ! -f "$INSTALL_DIR/.env" ]; then
       DEVICE_NAME=$(hostname -s 2>/dev/null | sed 's/[^a-zA-Z0-9 _-]//g')
