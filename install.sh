@@ -45,12 +45,40 @@ echo ""
 if ! command -v docker &>/dev/null; then
     echo "[1/6] Installing Docker..."
     apt-get update -qq
-    apt-get install -y -qq docker.io docker-compose-plugin
+    apt-get install -y -qq docker.io
     systemctl enable docker
     systemctl start docker
     usermod -aG docker "$AUDIO_USER"
 else
     echo "[1/6] Docker already installed"
+fi
+
+# Debian's own repos don't carry docker-compose-plugin (only Docker's upstream
+# apt repo does), so "apt-get install docker-compose-plugin" 404s on Trixie.
+# tidal-connect.service runs "docker compose up", so the plugin is required.
+# Install it as a static CLI plugin straight from upstream instead of adding
+# a whole new apt repo just for one binary.
+if ! docker compose version &>/dev/null; then
+    echo "  Installing docker compose CLI plugin..."
+    COMPOSE_VERSION="v5.4.0"
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        aarch64)
+            COMPOSE_SHA256="fc5d1371f1ec7987e703da94ede49af3fbfb240b83f22991a98511de7bc4b93b"
+            ;;
+        *)
+            echo "Error: no known docker-compose-plugin checksum for arch $ARCH"
+            echo "HiFiBerry OS NG targets arm64; see README for supported platforms."
+            exit 1
+            ;;
+    esac
+    PLUGIN_DIR="/usr/local/lib/docker/cli-plugins"
+    PLUGIN_PATH="${PLUGIN_DIR}/docker-compose"
+    mkdir -p "$PLUGIN_DIR"
+    curl -fsSL -o "$PLUGIN_PATH" \
+        "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-linux-${ARCH}"
+    echo "${COMPOSE_SHA256}  ${PLUGIN_PATH}" | sha256sum -c -
+    chmod +x "$PLUGIN_PATH"
 fi
 
 # --- Step 2: Check kernel page size (Pi 5/CM5 needs 4K pages) ---
