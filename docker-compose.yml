@@ -21,7 +21,7 @@ services:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - /var/run/dbus:/var/run/dbus
       - /run/user/AUDIO_UID/pulse/native:/run/user/AUDIO_UID/pulse/native
-      - AUDIO_HOME/.config/pulse/cookie:/root/.config/pulse/cookie:ro
+      - AUDIO_HOME/.config/pulse/cookie:/root/.config/pulse/cookie
     environment:
       - PULSE_SERVER=unix:/run/user/AUDIO_UID/pulse/native
       - PULSE_COOKIE=/root/.config/pulse/cookie

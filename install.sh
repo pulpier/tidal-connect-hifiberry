@@ -174,7 +174,7 @@ services:
       - ./entrypoint.sh:/entrypoint.sh:ro
       - /var/run/dbus:/var/run/dbus
       - ${PULSE_SOCKET}:${PULSE_SOCKET}
-      - ${PULSE_COOKIE}:/root/.config/pulse/cookie:ro
+      - ${PULSE_COOKIE}:/root/.config/pulse/cookie
     environment:
       - PULSE_SERVER=unix:${PULSE_SOCKET}
       - PULSE_COOKIE=/root/.config/pulse/cookie
