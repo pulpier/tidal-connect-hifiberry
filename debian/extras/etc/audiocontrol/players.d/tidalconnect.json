@@ -1,0 +1,22 @@
+{
+    "generic": {
+        "name": "tidalconnect",
+        "display_name": "TIDAL Connect",
+        "enable": true,
+        "supports_api_events": true,
+        "capabilities": [
+            "play",
+            "pause",
+            "stop",
+            "next",
+            "previous",
+            "seek",
+            "shuffle",
+            "loop",
+            "metadata",
+            "album_art"
+        ],
+        "initial_state": "stopped",
+        "command_url": "http://127.0.0.1:8090/command"
+    }
+}

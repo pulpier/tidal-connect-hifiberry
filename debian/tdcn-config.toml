@@ -1,0 +1,89 @@
+# tdcn device configuration for HiFiBerry OS.
+#
+# Every setting tdcn accepts is listed below. Commented-out lines show the
+# built-in default and can simply be uncommented to change one — a commented
+# line and a missing line behave identically, so nothing here needs editing to
+# get a working device.
+#
+# Only two settings have no default and are therefore set for real: the paths
+# under [cert]. Everything else tdcn works out on its own.
+#
+# Unknown keys are ignored rather than rejected, so a typo silently leaves the
+# default in place. Check spelling against this file when a change seems to
+# have had no effect.
+
+[device]
+# The device model. It selects the certificate bundle named by [cert] dat
+# below, which is the ZenStream one, so change it only alongside that bundle —
+# a device advertising a model its certificate does not back will be refused.
+#   ZenStream   (the shipped bundle)
+#   NeoStream
+#model = "ZenStream"
+
+# The mDNS device id. Unlike the model this is not tied to the certificate: it
+# only has to be unique per device on the network. Two devices advertising the
+# same id are deduplicated into a single entry by the Tidal app, so the second
+# one simply never appears. By default tdcn derives it from /etc/uuid, which
+# HiFiBerry OS writes per device, reduced to the 32-hex form the reference
+# device advertises; where that file is missing it falls back to "0" — a
+# deliberately obvious sentinel, not something two devices should both run on.
+# Set this only to pin a specific id.
+#id = "<32 hex characters>"
+
+# The name shown in the Tidal app's device list. By default tdcn uses this
+# machine's "pretty" hostname (PRETTY_HOSTNAME in /etc/machine-info, what
+# `hostnamectl set-hostname --pretty` writes), which may contain spaces and
+# punctuation; failing that, the plain system hostname with any DNS domain
+# trimmed off. Set this to pin a name regardless of what the host is called.
+#friendly_name = "Living Room"
+
+# TCP port for the Tidal Connect endpoint: both the mDNS SRV record and the
+# wss:// listener. The Tidal app expects 2019; there is rarely a reason to move
+# it.
+#port = 2019
+
+[cert]
+# No defaults — tdcn cannot start without these two.
+#
+# tdcn does not read a key or certificate from disk. At every startup it runs
+# the ssl-handler below, which recovers this device's key/certificate from the
+# proprietary player binary and the CMS bundle named here, and returns them on
+# stdout. Nothing is ever written to disk, so there is no certificate store to
+# back up, provision or clean up.
+binary = "/usr/share/hifiberry-tidal-connect/vendor/tidal_connect_application"
+dat = "/usr/share/hifiberry-tidal-connect/vendor/certificate.dat"
+
+# The ssl-handler to run. The default is resolved on PATH, and this package
+# installs it at /usr/bin/tdcn-ssl.
+#ssl_handler = "tdcn-ssl"
+
+[audio]
+# Output backend. "alsa" on Linux; tdcn talks to the DAC directly, with no
+# PipeWire or PulseAudio in between.
+#backend = "alsa"
+
+# ALSA device name. "default" follows the system's ALSA configuration, which on
+# HiFiBerry OS already points at the DAC. Set an explicit device (see
+# `aplay -l`) only when the default is the wrong card.
+#device = "default"
+
+[audiocontrol]
+# Integration with audiocontrol: tdcn posts metadata and playback state to it,
+# and accepts transport commands back. tdcn refuses to start when audiocontrol
+# is unreachable, so this is not optional in practice on HiFiBerry OS.
+#enabled = true
+
+# Where audiocontrol's API lives, and the player name tdcn registers under. The
+# name must match /etc/audiocontrol/players.d/tidalconnect.json, which this
+# package ships.
+#base_url = "http://127.0.0.1:1080"
+#player_name = "tidalconnect"
+
+# Port tdcn listens on for transport commands from audiocontrol. Must match the
+# command_url in that same players.d file.
+#command_port = 8090
+
+[oauth]
+# Client id tdcn presents to Tidal. The default is the one the reference device
+# uses; changing it will stop the Tidal app from talking to this device.
+#client_id = "oXXkuQ3q20WmRCYC"

@@ -5,12 +5,34 @@ Source: https://github.com/pulpier/tidal-connect-hifiberry
 Files: *
 Copyright: 2024 Pulpier and contributors
 License: Expat
- The Docker packaging, install scripts, systemd units and documentation are
- provided as-is under the MIT/Expat license.
+ The Debian packaging and documentation are provided as-is under the
+ MIT/Expat license.
 
-Files: Docker/src/bin/* Docker/src/id_certificate/*
+Files: vendor/tidal_connect_application.gz vendor/certificate.dat.gz vendor/ids.txt
 Copyright: TIDAL
 License: proprietary
- The Tidal Connect binaries and certificate are proprietary property of TIDAL
- and are redistributed here as provided by the upstream project. They are not
- covered by the Expat license above.
+ The Tidal Connect binary and device certificate are proprietary property of
+ TIDAL and are redistributed here as provided by the upstream project. They
+ are not covered by the Expat license above. They are vendored so that
+ tdcn-ssl (which handles the SSL certificate handling, run by tdcn itself
+ at every startup) can run without a network fetch.
+
+Files: vendor/bin/tdcn.gz
+Copyright: 2026 the tdcn authors
+License: proprietary
+ tdcn handles the Tidal Connect protocol. Proprietary, pre-built binary
+ vendored here. Not covered by the Expat license above.
+
+Files: vendor/bin/tdcn-ssl.gz
+Copyright: 2026 the tdcn authors
+License: Expat
+ tdcn-ssl handles SSL certificate setup for this device.
+ MIT-licensed, pre-built binary vendored here.
+
+Files: vendor/licenses/*
+Copyright: various (see each file)
+License: various
+ Third-party license texts bundled with the proprietary Tidal Connect
+ binary above, covering the libraries it links (OpenSSL, Boost, curl,
+ websocketpp, FFmpeg, FLAC, PortAudio, mDNSResponder and others).
+ Redistributed unmodified as required by those licenses.

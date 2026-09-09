@@ -1,25 +1,19 @@
-# Docker build context + runtime scripts
-Docker opt/tidal-connect/
-entrypoint.sh opt/tidal-connect/
-tidal-bridge.sh opt/tidal-connect/
-tidal-watchdog.sh opt/tidal-connect/
-volume-bridge.sh opt/tidal-connect/
-wait-for-avahi.sh opt/tidal-connect/
-wait-for-container.sh opt/tidal-connect/
-wait-for-mdns-clear.sh opt/tidal-connect/
+# Proprietary binary/certificate, input to tdcn-ssl (see debian/tdcn-config.toml's
+# [cert] section). vendor/*.gz are decompressed to plain files by debian/rules
+# (override_dh_auto_install); the .gz originals are not shipped.
+vendor/ids.txt usr/share/hifiberry-tidal-connect/
+vendor/licenses usr/share/hifiberry-tidal-connect/
 
-# systemd units
-tidal-connect.service lib/systemd/system/
-tidal-bridge.service lib/systemd/system/
-tidal-watchdog.service lib/systemd/system/
-tidal-connect-build.service lib/systemd/system/
-
-# Web UI player registry + icon
-debian/extras/etc/hifiberry/players.d/tidal.json etc/hifiberry/players.d/
-debian/extras/etc/hifiberry/players.d/icons/tidal.svg etc/hifiberry/players.d/icons/
+# Web UI player registry + icon. Package data, not configuration, so it goes
+# under /usr/share: configurator reads /usr/share/hifiberry/players.d and
+# /etc/hifiberry/players.d both, with /etc winning, and /etc is reserved for
+# genuine local overrides. Shipped as a conffile it could never be updated —
+# dpkg would treat any pre-existing file as a local edit and keep it for ever.
+debian/extras/usr/share/hifiberry/players.d/tidal.json usr/share/hifiberry/players.d/
+debian/extras/usr/share/hifiberry/players.d/icons/tidal.svg usr/share/hifiberry/players.d/icons/
 
 # AudioControl (ACR) metadata registration
-debian/extras/etc/audiocontrol/players.d/tidal.json etc/audiocontrol/players.d/
+debian/extras/etc/audiocontrol/players.d/tidalconnect.json etc/audiocontrol/players.d/
 
 # config-server permission to control the service from the Web UI
 debian/extras/etc/configserver/conf.d/tidal-connect.json etc/configserver/conf.d/

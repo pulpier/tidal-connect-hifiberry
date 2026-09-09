@@ -2,25 +2,28 @@ Source: hifiberry-tidal-connect
 Section: hifiberry-extensions
 Priority: optional
 Maintainer: Pulpier <138523980+pulpier@users.noreply.github.com>
-Build-Depends: debhelper-compat (= 13)
+# libasound2t64 is needed at build time only so dh_shlibdeps can resolve
+# libasound.so.2 for /usr/bin/tdcn. Trixie renamed the runtime library in the
+# 64-bit time_t transition; the alternative keeps bookworm buildable.
+Build-Depends: debhelper-compat (= 13),
+               libasound2t64 | libasound2
 Standards-Version: 4.6.2
 Homepage: https://github.com/pulpier/tidal-connect-hifiberry
 
 Package: hifiberry-tidal-connect
 Architecture: arm64
-Depends: ${misc:Depends},
-         docker.io | docker-ce,
-         docker-compose | docker-compose-plugin | docker-compose-v2
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Recommends: hifiberry-audiocontrol (>= 0.6.18)
 Description: Tidal Connect endpoint for HiFiBerry
  Turn a HiFiBerry into a Tidal Connect receiver: stream from the Tidal app on
  your phone directly to the attached HiFiBerry DAC.
  .
- The Tidal Connect binaries are proprietary 32-bit ARM executables that need
- legacy Debian Stretch libraries, so they run inside a Docker container built
- on the device at install time. Audio is routed to the host's PipeWire via the
- PulseAudio protocol.
+ Ships two vendored binaries — tdcn (handles the Tidal Connect protocol) and
+ tdcn-ssl (handles SSL certificate setup for this device, run by tdcn itself
+ at every startup) — plus the HiFiBerry OS integration: Web UI and
+ audiocontrol player registration, configserver permissions, and the tdcn
+ systemd user service.
 XB-Hifiberry-Extension: yes
 XB-Extension-Name: Tidal Connect
 XB-Extension-Category: player
-XB-Extension-Needs-Reboot: maybe
+XB-Extension-Needs-Reboot: no

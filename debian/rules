@@ -1,21 +1,46 @@
 #!/usr/bin/make -f
 
+# This package is glue around two pre-built binaries (vendor/bin/): tdcn
+# (handles the Tidal Connect protocol) and tdcn-ssl (handles SSL
+# certificate setup for this device). Neither is compiled here.
+
+PACKAGE = hifiberry-tidal-connect
+
 %:
 	dh $@
 
-# The four units are orchestrated entirely in the maintainer scripts: the build
-# oneshot must run first and the runtime units are gated on a build stamp, so
-# dh_installsystemd's default enable/start behaviour does not fit. Disable it and
-# manage systemd in postinst/prerm/postrm.
-override_dh_installsystemd:
-
-# Everything under /opt/tidal-connect is container payload — the ARM32 Tidal
-# binaries and pa_devs helpers run *inside* the Docker container, not on the
-# host. They must not be treated as host executables, so skip the ELF-processing
-# helpers (this package ships no host binaries; deps are declared by hand).
-override_dh_shlibdeps:
+override_dh_auto_install:
+	dh_auto_install
+	install -d debian/$(PACKAGE)/usr/bin
+	gunzip -c vendor/bin/tdcn.gz > debian/$(PACKAGE)/usr/bin/tdcn
+	gunzip -c vendor/bin/tdcn-ssl.gz > debian/$(PACKAGE)/usr/bin/tdcn-ssl
+	chmod 0755 debian/$(PACKAGE)/usr/bin/tdcn \
+		debian/$(PACKAGE)/usr/bin/tdcn-ssl
+	# Config and systemd user unit.
+	install -D -m 0644 debian/tdcn-config.toml \
+		debian/$(PACKAGE)/etc/tdcn/config.toml
+	install -D -m 0644 debian/tdcn.service \
+		debian/$(PACKAGE)/usr/lib/systemd/user/tdcn.service
+	# The vendored proprietary binary/certificate: input to tdcn-ssl,
+	# decompressed to the plain-file paths it expects.
+	install -d debian/$(PACKAGE)/usr/share/hifiberry-tidal-connect/vendor
+	gunzip -c vendor/tidal_connect_application.gz \
+		> debian/$(PACKAGE)/usr/share/hifiberry-tidal-connect/vendor/tidal_connect_application
+	gunzip -c vendor/certificate.dat.gz \
+		> debian/$(PACKAGE)/usr/share/hifiberry-tidal-connect/vendor/certificate.dat
 
 override_dh_strip:
+	# The /usr/bin binaries are already stripped release builds; nothing
+	# further to strip there, and no dbgsym package on an embedded target.
+	# usr/share/hifiberry-tidal-connect/vendor/tidal_connect_application
+	# must NOT be stripped: tdcn-ssl's key recovery reads specific symbols
+	# out of that binary and fails without them ("stripped binary?").
+	dh_strip --no-automatic-dbgsym -X usr/share/hifiberry-tidal-connect
 
-override_dh_dwz:
-
+override_dh_shlibdeps:
+	# usr/share/hifiberry-tidal-connect/vendor/tidal_connect_application is a
+	# vendored 32-bit ARM binary — data input to tdcn-ssl, never executed on
+	# this host — so it must not be scanned for shared-library dependencies
+	# (its armhf libs don't exist here). Only /usr/bin/{tdcn,tdcn-ssl} need
+	# real shlibs tracking.
+	dh_shlibdeps -X usr/share/hifiberry-tidal-connect

@@ -1,14 +1,43 @@
 #!/bin/sh
 set -e
 
+# dh_installsystemduser only ever writes an enable into postinst and a purge
+# into postrm -- unlike dh_installsystemd for system units, it emits nothing
+# here, because at packaging time there is no way to know which user managers
+# have the unit loaded. So stopping tdcn is this script's job: without it an
+# upgrade replaces /usr/bin/tdcn underneath a running daemon, and a removal
+# leaves it running until the next logout or reboot.
+#
+# tdcn.service is a systemd --user unit, so it has to be stopped inside the
+# audio user's own manager. Same approach as the mpd package: resolve the user
+# from /etc/hifiberry.user and reach their session via systemd-run. Best
+# effort throughout -- during an image build there is no running session, and
+# a failure here must never block the upgrade or removal.
 case "$1" in
-  remove|deconfigure)
-    if [ -d /run/systemd/system ]; then
-      systemctl stop tidal-watchdog.service tidal-bridge.service \
-                     tidal-connect.service tidal-connect-build.service \
-                     >/dev/null 2>&1 || true
-    fi
-    ;;
+    remove|upgrade|deconfigure)
+        if [ -d /run/systemd/system ]; then
+            HB_USER=""
+            if [ -f /etc/hifiberry.user ]; then
+                HB_USER=$(grep -vE '^[[:space:]]*#|^[[:space:]]*$' /etc/hifiberry.user | head -1 | tr -d '[:space:]')
+            fi
+            if [ -n "$HB_USER" ] && getent passwd "$HB_USER" >/dev/null 2>&1; then
+                HB_UID=$(id -u "$HB_USER" 2>/dev/null)
+                if [ -n "$HB_UID" ] && [ -d "/run/user/$HB_UID" ]; then
+                    systemd-run --uid "$HB_UID" --setenv XDG_RUNTIME_DIR="/run/user/$HB_UID" \
+                        --pipe --wait --quiet --collect \
+                        systemctl --user stop tdcn.service >/dev/null 2>&1 || true
+                fi
+            fi
+        fi
+        ;;
+
+    failed-upgrade)
+        ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
 esac
 
 #DEBHELPER#

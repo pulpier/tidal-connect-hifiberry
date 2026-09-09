@@ -1,24 +1,33 @@
 #!/bin/sh
 set -e
 
+# The debhelper snippet below (from dh_installsystemduser) only drops the
+# enable-state symlinks, and only on purge. It does not touch a running user
+# manager, so after the unit file has been removed the audio user's manager
+# still has the old tdcn.service loaded -- reload it so the stale unit goes
+# away rather than lingering until the next reboot. prerm has already stopped
+# the service; this is cleanup only.
+#
+# Nothing else to remove for this package: tdcn never writes its recovered
+# key/certificate to disk, so there is no certificate store to clean up.
 case "$1" in
-  remove|purge)
-    if [ -d /run/systemd/system ]; then
-      systemctl disable tidal-watchdog.service tidal-bridge.service \
-                        tidal-connect.service tidal-connect-build.service \
-                        >/dev/null 2>&1 || true
-      systemctl daemon-reload || true
-    fi
-    ;;
+    remove|purge)
+        if [ -d /run/systemd/system ]; then
+            HB_USER=""
+            if [ -f /etc/hifiberry.user ]; then
+                HB_USER=$(grep -vE '^[[:space:]]*#|^[[:space:]]*$' /etc/hifiberry.user | head -1 | tr -d '[:space:]')
+            fi
+            if [ -n "$HB_USER" ] && getent passwd "$HB_USER" >/dev/null 2>&1; then
+                HB_UID=$(id -u "$HB_USER" 2>/dev/null)
+                if [ -n "$HB_UID" ] && [ -d "/run/user/$HB_UID" ]; then
+                    systemd-run --uid "$HB_UID" --setenv XDG_RUNTIME_DIR="/run/user/$HB_UID" \
+                        --pipe --wait --quiet --collect \
+                        systemctl --user daemon-reload >/dev/null 2>&1 || true
+                fi
+            fi
+        fi
+        ;;
 esac
-
-if [ "$1" = "purge" ]; then
-  # Remove the built image and the files generated at install time.
-  docker rmi hifiberry-tidal-connect:latest >/dev/null 2>&1 || true
-  rm -f /opt/tidal-connect/.env /opt/tidal-connect/docker-compose.yml \
-        /opt/tidal-connect/.build-stamp
-  rmdir --ignore-fail-on-non-empty /opt/tidal-connect 2>/dev/null || true
-fi
 
 #DEBHELPER#
 

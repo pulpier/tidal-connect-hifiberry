@@ -1,14 +1,12 @@
-hifiberry-tidal-connect (1.0.0) stable; urgency=medium
+hifiberry-tidal-connect (2.0.4) stable; urgency=medium
 
-  * Initial Debian packaging of the Tidal Connect receiver as a HiFiBerry
-    extension, installable from the HiFiBerry OS Web UI.
-  * Ships the Docker build context, the four systemd units, and the players.d /
-    audiocontrol / configserver drop-ins previously written by install.sh.
-  * The container image is built on-device by a retryable oneshot unit
-    (tidal-connect-build.service) rather than in the package maintainer script;
-    the runtime tidal-connect.service is gated on a build stamp so a failed
-    build never corrupts package state.
-  * postinst generates the system-specific .env and docker-compose.yml and, on
-    Pi 5 / CM5, switches to the 4K-page kernel and requests a reboot.
+  * Start tdcn again after an upgrade. prerm stops it so the binary is not
+    replaced underneath a running daemon, but dh_installsystemduser emits no
+    matching restart -- for system units dh_installsystemd restarts after an
+    upgrade, its user-unit counterpart does nothing -- so every upgrade left
+    the player stopped and the Web UI showing it inactive, with nothing to
+    say why. Only started when the unit is enabled, so a player switched off
+    deliberately stays off.
 
- -- Pulpier <138523980+pulpier@users.noreply.github.com>  Thu, 16 Jul 2026 14:00:00 +0000
+ -- Pulpier <138523980+pulpier@users.noreply.github.com>  Wed, 09 Sep 2026 07:54:31 +0000
+

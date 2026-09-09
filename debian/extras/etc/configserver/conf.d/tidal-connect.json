@@ -1,5 +1,5 @@
 {
     "systemd": {
-        "tidal-connect": "all"
+        "tdcn": "all"
     }
 }

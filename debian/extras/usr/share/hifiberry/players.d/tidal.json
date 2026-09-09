@@ -1,0 +1,9 @@
+{
+    "name": "Tidal",
+    "provided_by": "tdcn",
+    "systemd_service": "tdcn",
+    "icon": "tidal",
+    "allow_change": true,
+    "maintainer_name": "Pulpier",
+    "maintainer_url": "https://github.com/pulpier/tidal-connect-hifiberry"
+}

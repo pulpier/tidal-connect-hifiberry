@@ -1,0 +1,8 @@
+# 2.0.0 shipped the Web UI descriptor and its icon under /etc, which made them
+# conffiles. 2.0.1 ships them from /usr/share instead, but dpkg does not delete
+# a conffile a package stops shipping -- it only marks it obsolete and leaves it
+# on disk. configurator lets /etc shadow /usr/share, so without these the stale
+# copies would keep winning and the packaged descriptor could never be updated,
+# which is the whole point of the move.
+rm_conffile /etc/hifiberry/players.d/tidal.json 2.0.0
+rm_conffile /etc/hifiberry/players.d/icons/tidal.svg 2.0.0

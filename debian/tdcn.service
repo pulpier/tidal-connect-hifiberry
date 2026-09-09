@@ -1,0 +1,16 @@
+[Unit]
+Description=Tidal Connect device (tdcn, user service)
+# A user service runs in the per-user systemd manager (unprivileged, not
+# root), which cannot order against system units such as audiocontrol -
+# hence no After=/Wants= on system targets here.
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/tdcn --config /etc/tdcn/config.toml
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=yes
+PrivateTmp=yes
+
+[Install]
+WantedBy=default.target
